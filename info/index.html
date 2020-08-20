@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Community Info</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" type="image/x-icon" href="../img/logo/favicon.png" />
+<link rel="icon" type="image/x-icon" href="../img/logo/neighborhood-icon.png" />
 
 <script type="text/javascript" src="../js/jquery/jquery-1.12.4.min.js" id="http://localhost:8887/localsite/js/jquery/jquery-1.12.4.min.js"></script>
 <script type="text/javascript" src="../js/localsite.js" id="http://localhost:8887/localsite/js/localsite.js"></script>
@@ -18,8 +18,8 @@
 <!--
 <link rel="stylesheet" type="text/css" href="../../localsite/css/bootstrap.darkly.min.css"/>
 -->
-<link rel="stylesheet" type="text/css" href="../../io/charts/useeio/widgets.css">
-<script src="../../io/charts/useeio/lib/useeio_widgets.js"></script>
+<link rel="stylesheet" type="text/css" href="https://neighborhood.org/io/charts/useeio/widgets.css">
+<script src="https://neighborhood.org/io/charts/useeio/lib/useeio_widgets.js"></script>
 
 <!-- LOCAL DEV -->
 <!--
@@ -43,16 +43,16 @@
 	$(document).ready(function () {
 		let startsWith13 = true; // To do - change to check array
 		if (!param.geo || startsWith13) {
-			param.titleArray = ["Georgia"]
-			param.headerLogo = "<img src='/community/img/logo/georgia-icon.png' style='width:64px'>";
+			//param.titleArray = ["Georgia"]
+			//param.headerLogo = "<img src='/community/img/logo/georgia-icon.png' style='width:64px'>";
 		}
 	    $(window).scroll(function(){$(".herocenter").css("opacity", 1 - $(window).scrollTop() / 200);});
 	});
 </script>
 
 <style>
-#logoholder { margin-top: -8px; }
-#headerLocTitleHolder { margin-left: 10px !important; margin-top: 2px !important; }
+#logoholderX { margin-top: -8px; }
+#pageLinksHolder { display:block !important; margin-top: 55px;}
 
 .fade-in {
   animation: fadeIn ease 4s;
@@ -223,10 +223,29 @@ document.addEventListener('hashChangeEvent', function (elem) {
  	refreshWidgets();
 }, false);
 
+function reloadMapTiles(whichmap,attempt) {
+	if ($('#geomap').html().length > 0) {
+		if (document.querySelector(whichmap)._leaflet_map) { // Give time for next line to be found.
+			document.querySelector(whichmap)._leaflet_map.invalidateSize();
+		} else {
+			console.log("reloadMapTiles " + whichmap + ". Attempt " + attempt);
+			if (attempt < 100) {
+				setTimeout( function() {
+					reloadMapTiles(whichmap,attempt+1)
+				}, 50 );
+			} else {
+				// Try anyway
+				//console.log("reloadMapTiles - try anyway");
+				//document.querySelector(whichmap)._leaflet_map.invalidateSize(); // Still returns error.
+			}
+		}
+	}
+}
 // INIT
 //var hash = getHash(); // Include all existing
 var priorHash = {};
 function refreshWidgets() {
+	let reloadedMap = false;
 	param = loadParams(location.search,location.hash); // param is declared in localsite.js
 	let hash = getHash();
 	//alert("refreshWidgets from prior geo: " + priorHash.geo + " to " + hash.geo);
@@ -248,15 +267,23 @@ function refreshWidgets() {
 			$("#infoColumn").show();
 			$("#geomap").show();
 			
-			if ($('#geomap').html().length > 0) {
-				if (document.querySelector('#geomap')._leaflet_map) { // Give time for next line to be found.
-					document.querySelector('#geomap')._leaflet_map.invalidateSize();
-				} else {
-					//console.log("Delay so _leaflet_map is available.")
-					setTimeout( function() {
-						document.querySelector('#geomap')._leaflet_map.invalidateSize();
-   					}, 50 );
-				}
+			// DOES NOT WORK - document.querySelector(whichmap)._leaflet_map not found
+			//reloadMapTiles('#geomap',1);
+			
+			// Reload map instead
+			if (reloadedMap == false) {
+				loadScript('/localsite/js/leaflet.js', function(results) {
+					let whichmap = "geomap";
+						let map = document.querySelector('#' + whichmap)._leaflet_map; 
+						if (map) {
+							if (geojsonLayer) {
+								// removes the whole layer until 
+								map.removeLayer(geojsonLayer); // Remove the prior topo layer
+							}
+						}
+					renderMapShapes(whichmap, hash); // Temp here
+					reloadedMap = true;
+				});
 			}
 			/*
 			alert("show map")
@@ -292,21 +319,42 @@ function refreshWidgets() {
         	$(".state-view").show();
         	$(".industry_filter_settings").hide(); // temp
 		}
-		if (hash.geo && hash.geo.split(",").length > 4) {
-	        //$("#infoColumn").hide();
-	        $("#top-content-columns").addClass("top-content-columns-wide");
-
+		if (hash.geo) {
+			if (hash.geo.split(",").length >= 3) {
+		        $("#top-content-columns").addClass("top-content-columns-wide");
+		    } else {
+		    	$("#top-content-columns").removeClass("top-content-columns-wide");
+		    }
 		} else {
 	        $("#infoColumn").show();
 	        $(".mainColumn1").show();
 	    }
 
-	    if (hash.geomap == "true") { // Since otherwise called above
-	    	loadScript('/localsite/js/leaflet.js', function(results) {
-	    		//alert("update map")
-				renderMapShapesSimple("geomap", hash);
-			});
-		}
+	    //if (hash.geomap == "true") { // Since otherwise called above
+	    	if (reloadedMap == false) {
+		    	loadScript('/localsite/js/leaflet.js', function(results) {
+
+			    		// ._leaflet_map Only works if alert occurs here
+			    		//alert("reloadedMap2 " + reloadedMap)
+
+			    		//alert("update map")
+						//renderMapShapesSimple("geomap", hash);
+
+						// Clear here so clicking a new region redraws map.
+						// This can be avoided once we figure out how to update an individal shape using renderMapShapesSimple.
+						let whichmap = "geomap";
+						let map = document.querySelector('#' + whichmap)._leaflet_map; 
+						if (geojsonLayer) {
+							// removes the whole layer until 
+							map.removeLayer(geojsonLayer); // Remove the prior topo layer
+						}
+						//alert("render")
+						renderMapShapes(whichmap, hash); // Temp here
+
+				});
+				reloadedMap = true;
+			}
+		//}
 	}
 	//alert(hash.regiontitle)
 	if (hash.regiontitle != priorHash.regiontitle) {
@@ -347,6 +395,8 @@ function refreshWidgets() {
 <!-- to do: load top hero here when no go or geo. -->
 
 
+
+
 <!-- map and list -->
 <script type="text/javascript" src="../js/map-embed.js?show=smart"></script>
 <!-- /map and list -->
@@ -359,44 +409,11 @@ To do: make the links below an optional widget
 <div id="pageLinks"></div>
 -->
 
-<div id="top-content-columns" class="content contentpadding noprint" style="margin-top:40px; padding-top:0px; padding-bottom:0px">
-
-	<br>
-	<!-- two columns -->
-	<div class="pageColumns">
-		<div style="display:table-row;">
-			
-			<div style="float:right; padding: 12px 0px 10px 0" class="noprint">
-				<a href="../../io/charts/">About Widgets</a>
-			</div>
-			<!--
-				class="mainColumn mainColumn1" 
-			-->
-		     <div id="pageLinksInsert" style="displayX:none; float:left; font-size: 15px; padding: 12px 30px 10px 0">
-		          <a onClick="go({}); return false;"  href="./">Overview</a> | 
-		          <a onClick="goHash({'go':'bioeconomy','show':''}); return false;" href="./#go=bioeconomy">Bioeconomy</a> | 
-		          <span class="local" style="display:none">
-		          <a onClick="go({'go':'','show':'farmfresh'}); return false;" href="./#show=farmfresh">Fresh Produce</a> | 
-		      	  </span>
-		          <a onClick="goHash({'go':'manufacturing','show':''}); return false;" href="./#go=manufacturing">Manufacturing</a> | 
-		          <a onClick="goHash({'go':'parts','show':''}); return false;" href="./#go=parts">Automotive Parts</a> | 
-		          <span class="local" style="display:none">
-		          <a onClick="goHash({'go':'','show':'suppliers'}); return false;" href="./#show=suppliers">PPE Suppliers</a> | 
-		      	  </span>
-		          <a onClick="goHash({'geomap':'true'}); return false;" href="./#geomap=US13">County&nbsp;Map</a>
-		          <br>
-	        </div>
-
-		</div>
-	</div>
-	
-
-
-
-
+<div id="top-content-columns" class="content contentpadding noprint" style="margin-top:20px; padding-top:0px; padding-bottom:0px">
 
 	<div style="padding-top:0px; padding-bottom:0px">
 
+	<!-- two columns -->
 	<div class="pageColumns">
 		<div style="display:table-row">
 			<div id="infoColumn" class="mainColumn mainColumn1" style="font-size: 15px; position: relative">
@@ -407,7 +424,9 @@ To do: make the links below an optional widget
 				value added revenue and positive environmental&nbsp;impacts.
 				</div>
 				-->
-				<div id="geomap" style="height:550px; border:1px solid blue; display:none; position: relative"></div>
+
+				<!-- Must be displayed initiallly so tiles are visible -->
+				<div id="geomap" style="height:550px; border:1px solid blue; position: relative"></div>
 
 				
 				<div id="aboutToolsDiv" style="position: relative;"></div>
@@ -494,7 +513,7 @@ To do: make the links below an optional widget
 	<hr>
 
 	<div style="float:right;margin-bottom:16px" class="noprint">
-		<a href="../../io/charts/">About Widgets</a>
+		<a href="https://neighborhood.org/io/charts/">About Widgets</a>
 	</div>
 </div>
 
@@ -635,7 +654,7 @@ Choose commodities below to view upstream input and downstream output.<br>
 <br><br>
 <div class="content contentadding">
 	<div style="float:right;margin-bottom:16px" class="noprint">
-		<a href="../../io/charts/">About Mosaic</a>
+		<a href="https://neighborhood.org/io/charts/">About Mosaic</a>
 	</div>
 
 	<h2 style="border-bottom: 0px">Environmental Indicators</h2>
@@ -805,7 +824,7 @@ https://www.epa.gov/enviroatlas
 	<div class="bubble-graph">
 
 		<div style="float:right;margin-bottom:16px" class="noprint">
-			<a href="../../io/charts/">About Bubble Chart</a>
+			<a href="https://neighborhood.org/io/charts/">About Bubble Chart</a>
 		</div>
 
         <h2 style="border-bottom: 0px">Impact Bubble Chart</h2>
@@ -1020,14 +1039,14 @@ function loadScriptXXXXXX(url, callback)
 function updateText(go) {
 	$("#aboutToolsDiv").text("");
 	if (go == "bioeconomy") {
-		loadMarkdown("../../io/tools/bioeconomy-planner/about.md", "aboutToolsDiv", "_parent");
-		//loadMarkdown("../../io/tools/bioeconomy-planner/bioenergy/README.md", "bioenergySummaryDiv", "_parent");
+		loadMarkdown("https://neighborhood.org/io/tools/bioeconomy-planner/about.md", "aboutToolsDiv", "_parent");
+		//loadMarkdown("https://neighborhood.org/io/tools/bioeconomy-planner/bioenergy/README.md", "bioenergySummaryDiv", "_parent");
 	} else if (go == "dataprep") {
 		loadMarkdown("../../localsite/info/data/README.md", "aboutToolsDiv", "_parent");
 	} else if (go == "parts") {
-		loadMarkdown("../../io/tools/localized-economy/about.md", "aboutToolsDiv", "_parent");
+		loadMarkdown("https://neighborhood.org/io/tools/localized-economy/about.md", "aboutToolsDiv", "_parent");
 	} else {
-		loadMarkdown("../../io/tools/industry-impact/about.md", "aboutToolsDiv", "_parent");
+		loadMarkdown("https://neighborhood.org/io/tools/industry-impact/about.md", "aboutToolsDiv", "_parent");
 	}
 
 }
@@ -1068,10 +1087,20 @@ document.getElementById('showValues').onclick = function() {
 // Let's look at Industry Mix first: http://localhost:8887/community/zip/leaflet/#columns=JobsAgriculture:50;JobsManufacturing:50
 var geojsonLayer;
 function renderMapShapesSimple(whichmap, hash) {
+	console.log("renderMapShapesSimple " + whichmap);
 	let map = document.querySelector('#' + whichmap)._leaflet_map; 
-	
+	//alert("renderMapShapesSimple " + whichmap);
+	if (geojsonLayer) {
+		//alert("found geojsonLayer")
+	  	// Problem, this removes the whole layer, shapes and all.
+		//map.removeLayer(geojsonLayer); // Remove the prior topo layer
+
+
+	}
+
 }
 function renderMapShapes(whichmap, hash) { // whichGeoRegion is not yet applied.
+	console.log("renderMapShapes " + whichmap);
 	var req = new XMLHttpRequest();
 	const whichGeoRegion = hash.geomap;
     // Topo data source
@@ -1228,13 +1257,17 @@ function renderMapShapes(whichmap, hash) { // whichGeoRegion is not yet applied.
 
 	  }
 
-	  if (geojsonLayer) {
-	  	//alert("Remove the prior topo layer")
-	  	// To do: 
-	  	map.removeLayer(geojsonLayer); // Remove the prior topo layer
-	  }
+	  if (map) {
+		  if (geojsonLayer) {
+		  	//alert("Remove the prior topo layer")
+		  	// To do: 
+		  	map.removeLayer(geojsonLayer); // Remove the prior topo layer
+		  }
 
-	  geojsonLayer = L.geoJson(topodata, {style:styleShape, onEachFeature: onEachFeature}).addTo(map); // Called within addTo(map)
+		  geojsonLayer = L.geoJson(topodata, {style:styleShape, onEachFeature: onEachFeature}).addTo(map); // Called within addTo(map)
+	  } else {
+	  	console.log("WARNING - map not available from _leaflet_map")
+	  }
 
       var baseLayers = {
         "Open Street Map": OpenStreetMap_BlackAndWhite,
@@ -1363,7 +1396,7 @@ function renderMapShapes(whichmap, hash) { // whichGeoRegion is not yet applied.
         	} else {
         		param.geo = fips;
         	}
-            goHash({'geo':param.geo});
+            goHash({'geo':param.geo,'regiontitle':''});
         }
 
         function onEachFeature(feature, layer){
@@ -1379,8 +1412,19 @@ function renderMapShapes(whichmap, hash) { // whichGeoRegion is not yet applied.
 
         // TEMP - reactivate
         info.onAdd = function(map) {
-            this._div = L.DomUtil.create('div', 'info');
-            this.update();
+        	//alert("attempt")
+        	if ($(".info.leaflet-control").length) {
+        		$(".info.leaflet-control").remove(); // Prevent adding multiple times
+        	}
+        	//if (!$(".info.leaflet-control").length) { // Prevent adding multiple times
+        	//	alert("does not exist")
+        		this._div = L.DomUtil.create('div', 'info');
+        	//} else {
+        		//$(".info.leaflet-control").text("bug");
+
+        		//this._div = $(".info.leaflet-control"); // Does not work
+        	//}
+        	this.update();
             return this._div;
         }
 
@@ -1402,12 +1446,14 @@ function renderMapShapes(whichmap, hash) { // whichGeoRegion is not yet applied.
             // Also, other state files may need to have primary node renamed to "data"
             //this._div.innerHTML = "<h4>Zip code</h4>" + (1==1 ? id + '</br>' : "Hover over map")
         }
-
-        info.addTo(map);
-
+        if (map) {
+        	info.addTo(map);
+    	}
      }
   }
 }
+
+// This could be reactivated to merge another dataset to map popups
 function mergeInDetailData(topodata,detail_data) {
   var data_by_id = d3.nest() // where id is a zipcode or countyID
     .key(function(d){return d.zcta;})
@@ -1425,6 +1471,7 @@ function mergeInDetailData(topodata,detail_data) {
   });
   return cluster_data;
 }
+
 function styleShape(feature) {
 
 	let hash = getHash(); // To do: pass in as parameter
@@ -1563,9 +1610,9 @@ function loadIOWidgets(param) {
 
 // INIT
 refreshWidgets();
-//if (!param.geo) { // Others gets called by refreshWidgets on init.
+if (!param.geo) { // Others gets called by refreshWidgets on init.
 	renderMapShapes("geomap", param);
-//}
+}
 
 </script>
 
