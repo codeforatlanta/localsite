@@ -4,15 +4,29 @@ Search utilizes Google Places API autocomplete functionality, returning Google's
 
 ## Setup
 
-1. You'll need to [enable billing](https://console.cloud.google.com/projectselector2/billing/enable). You can use the $300 free credits.
-1. Aquire a [Google API Key](https://developers.google.com/maps/documentation/javascript/get-api-key) - Create a project and then Create Credentials > API Key.  
-2. Update `./config.json -> googleAPIKey to aquired key value`
-3. Restrict the API key to only allow specific origin access (website domain)
+1. You'll need to [enable billing](https://console.cloud.google.com/projectselector2/billing/enable). You can use the $300 free credits.  Click "Payment Method" to see if your card has expired.  
 
-	[Google Cloud Console](https://console.cloud.google.com/) > your project > APIs & Services > Credentials > your API Key > Application restrictions > HTTP referers  
+2. Aquire a [Google API Key](https://developers.google.com/maps/documentation/javascript/get-api-key) - Create a project and then Create Credentials > API Key.  
 
-	You can use a wildcard before the domain `(*.example.com)` to allow all subdomains, likewise a wildcard after the domain `(.example.com/*)` to allow all paths
+3. Add your API key in config.json -> googleAPIKey  
 
-4. Enable `Google Places API` as well as `Google Maps JavaScript API` for autocomplete to work  
+4. Go to [Google Cloud Console](https://console.cloud.google.com/) > Go to API overview > Library
 
-	[Google Cloud Console](https://console.cloud.google.com/) > your project > APIs & Services > Libraries > above library - Enable
+	Search and Enable `Places API` and `Maps JavaScript API` for autocomplete to work.  
+
+5. Restrict the API key to only allow specific origin access (website domain)
+
+	[Google Cloud Console](https://console.cloud.google.com/) > your project > APIs & Services (in left side menu) > Credentials > your API Key > Application restrictions > HTTP referers  
+
+	You can use a wildcard before the domain `(*.example.com)` to allow all subdomains, likewise a wildcard after the domain `(*.example.com/*)` to allow all paths.  
+
+	<!-- Using data.georgia.org  -->
+
+---
+<br>
+
+You can also use the [Google Geocode API Directly](https://maps.googleapis.com/maps/api/geocode/json?address=1600+Amphitheatre+Parkway,+Mountain+View,+CA&key=YOUR_API_KEY) to fetch lat/lon values for addresses. Add your API key to the link. 
+You can make up to 40,000 calls per month to the [Google Maps API](https://developers.google.com/maps/documentation/geocoding/start) at no charge.  
+
+ 
+

@@ -176,7 +176,7 @@ function loadFromCSV(whichmap,whichmap2,dp,basemaps1,basemaps2,attempts,callback
         // ADD BACKGROUND BASEMAP
         if (layerControl[whichmap] == undefined) {
           layerControl[whichmap] = L.control.layers(basemaps1, overlays1).addTo(map); // Init layer checkboxes
-          basemaps1["Grayscale"].addTo(map); // Set the initial baselayer.
+          basemaps1["OpenStreetMap"].addTo(map); // Set the initial baselayer.
         } else {
           layerControl[whichmap].addOverlay(dp.group, dp.dataTitle); // Add layer checkbox
         }
@@ -471,7 +471,13 @@ function addIcons(dp,map,map2) {
     }
 
     // MAP POPUP
-    var output = "<b>" + element[dp.nameColumn] + "</b><br>";
+    let name = element.name;
+    if (element[dp.nameColumn]) {
+      name = element[dp.nameColumn];
+    } else if (element.title) {
+      name = element.title;
+    }
+    var output = "<b>" + name + "</b><br>";
     if (element[dp.addressColumn]) {
       output +=  element[dp.addressColumn] + "<br>";
     } else if (element.address || element.city || element.state || element.zip) { 
@@ -515,6 +521,10 @@ function addIcons(dp,map,map2) {
     if (element.items) {
       output += "<b>Items:</b> " + element.items + "<br>";
     }
+
+    if (element.website && !element.website.toLowerCase().includes("http")) {
+        element.website = "http://" + element.website;
+    }
     if (element.website) {
       if (element.website.length <= 50) {
         output += "<b>Website:</b> <a href='" + element.website + "' target='_blank'>" + element.website.replace("https://","").replace("http://","").replace("www.","").replace(/\/$/, "") + "</a>";
@@ -535,7 +545,10 @@ function addIcons(dp,map,map2) {
     } else if (element.website) {
       output += "<br>";
     }
-    
+    if (dp.distance) {
+      output += "distance: " + dp.distance + "<br>";
+    }
+
     // ADD POPUP BUBBLES TO MAP POINTS
     circle.bindPopup(output);
     circle2.bindPopup(output);
@@ -559,6 +572,40 @@ function addIcons(dp,map,map2) {
         marker.setRadius(markerRadius(1,map));
       }
     });
+
+
+    //if (map.getZoom() === 15)  {
+    //alert(map.getZoom()) 
+    
+    // NOTE - This will get called for each layer
+    //alert("zoomed"); // Occurs twice
+    var elements = document.getElementsByClassName('l-icon-material');
+    for (var i=0, max=elements.length; i < max; i++) {
+      //elements[i].style.backgroundColor = "transparent"; // "rgba(0, 0, 0, 0)";
+
+      if (map.getZoom() >= 9)  {
+        elements[i].style.marginTop = "-42px"; // Move circle to default when mappoint shape displayed.
+        elements[i].childNodes[0].style.opacity = 1; // The path within SVG. Show mappoint shape around circle with icon. Undoes custom hide in leaflet.icon-material.js line 57.
+      } else {
+        elements[i].style.marginTop = "-14px"; // Move circle down when mappoint shape not displayed.
+        elements[i].childNodes[0].style.opacity = 0;
+      }
+      //elements[i].child.style.opacity = 1;
+      // path.setAttribute('opacity', 0);
+
+      //elements[i].style.fillOpacity = 0;
+      //elements[i].style.opacity = 0; // works
+      //elements[i].style.width      = 6; // works sorta - crops
+
+      //elements[i].style.display = "none"; // works
+      //elements[i].style.width      = 16;
+      //elements[i].style.height     = 20;
+      //elements[i].style.marginLeft = 8;
+      //elements[i].style.marginTop  = 22;
+    }
+    
+
+
   });
   map2.on('zoomend', function() { // zoomend
     // Resize the circle to avoid large circles on close-ups
@@ -659,17 +706,61 @@ function markerRadius(radiusValue,map) {
   //console.log("mapZoom:" + mapZoom + " radiusValu:" + radiusValue + " radiusOut:" + radiusOut);
   return radiusOut;
 }
+function changeCat(catTitle) {
+  $('#catSearch').val(catTitle);
+
+  $('#items').prop("checked", true); // Add front to parameter name.
+
+  $('#industryCatList > div').removeClass('catListSelected');
+
+  $('.catList > div').filter(function(){
+      return $(this).text() === catTitle
+  }).addClass('catListSelected');
+
+  $("#topPanel").hide();
+  $('#catListHolderShow').text('Product Categories');
+  //$('html,body').animate({
+  //    scrollTop: $("#hublist").offset().top - 250
+  //});
+}
 
 // MAP 1
 // var map1 = {};
-function loadMap1(dp) { // Also called by map-filters.js
-  console.log('loadMap1');
+var showprevious = param["show"];
 
+function loadMap1(show, dp) { // Also called by map-filters.js
+
+  console.log('loadMap1');
+  if (!show) {
+    show = param["show"];
+  }
+  if (!show && param["go"]) {
+    show = param["go"].toLowerCase();
+  }
+  if (show != showprevious) {
+    changeCat(""); // Clear side
+  }
+  // To do: limit to when layer changes
+  //$(".layerclass").hide(); // Hides suppliers, and other layer-specific css
+  
+  //alert("show: " + show);
   // Note: light_nolabels does not work on https. Remove if so. Was positron_light_nolabels.
   var basemaps1 = {
-    'Grayscale' : L.tileLayer(mbUrl, {id: 'mapbox.light', attribution: mbAttr}),
+    //'Grayscale' : L.tileLayer(mbUrl, {id: 'mapbox.light', attribution: mbAttr}), // No longer works, may require registration change.
+    // OpenStreetMap_BlackAndWhite:
+      'Grayscale' : L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+          maxZoom: 18, attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
+      }),
+
+    // https://github.com/CartoDB/basemap-styles
+    //'Grayscale' : L.tileLayer('https://{s}.tile.cartocdn.com/{z}/{x}/{y}.png', {
+    //   attribution:'&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    //   subdomains: 'abcd',
+    //   maxZoom: 20,
+    //   minZoom: 0
+    // }),
     'Satellite' : L.tileLayer(mbUrl, {maxZoom: 25, id: 'mapbox.satellite', attribution: mbAttr}),
-    'Streets' : L.tileLayer(mbUrl, {id: 'mapbox.streets',   attribution: mbAttr}),
+    //'Streets' : L.tileLayer(mbUrl, {id: 'mapbox.streets',   attribution: mbAttr}),
     'OpenStreetMap' : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19, attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
     }),
@@ -677,7 +768,7 @@ function loadMap1(dp) { // Also called by map-filters.js
   var basemaps2 = {
     'Grayscale' : L.tileLayer(mbUrl, {id: 'mapbox.light', attribution: mbAttr}),
     'Satellite' : L.tileLayer(mbUrl, {maxZoom: 25, id: 'mapbox.satellite', attribution: mbAttr}),
-    'Streets' : L.tileLayer(mbUrl, {id: 'mapbox.streets',   attribution: mbAttr}),
+    //'Streets' : L.tileLayer(mbUrl, {id: 'mapbox.streets',   attribution: mbAttr}),
     'OpenStreetMap' : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19, attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
     }),
@@ -716,7 +807,8 @@ function loadMap1(dp) { // Also called by map-filters.js
   let community_root = dual_map.community_data_root();
   //let state_root = "/georgia-data/";
   //let state_root = dual_map.custom_data_root();
-  let state_abbreviation = "ga";
+  let state_abbreviation = param.state || "GA";
+
   let dp1 = {}
   // Might use when height it 280px
   dp1.latitude = 31.6074;
@@ -728,9 +820,16 @@ function loadMap1(dp) { // Also called by map-filters.js
   dp1.zoom = 7;
   dp1.listLocation = false; // Hides Waze direction link in list, remains in popup.
 
-  if (dp && dp[0]) { // Parameters set in page or layer json
+  $("." + show).show(); // Show layer's divs, after hiding all layer-specific above.
+  $(".headerOffset2").height($("#filterFieldsHolder").height() + "px"); // Adjust incase reveal/hide changes height.
+
+  //if (dp && dp[0]) { // Parameters set in page or layer json
+  if (dp && dp.dataset) { // Parameters set in page or layer json
     dp1 = dp;
-  } else if (param["show"] == "smart" || param["data"] == "smart") { // param["data"] for legacy: https://www.georgia.org/smart-mobility
+  } else if (show == "virtual") {
+    //  https://model.earth/community-data/us/state/GA/VirtualTourSites.csv
+
+  } else if (show == "smart" || param["data"] == "smart") { // param["data"] for legacy: https://www.georgia.org/smart-mobility
     dp1.listTitle = "Data Driven Decision Making";
     dp1.listSubtitle = "Smart & Sustainable Movement of Goods & Services";
     // Green Locations offer <span style="white-space: nowrap">prepared food<br>Please call ahead to arrange pickup or delivery</span>
@@ -755,7 +854,7 @@ function loadMap1(dp) { // Also called by map-filters.js
     dp1.markerType = "google";
      
 
-  } else if (param["show"] == "logistics") { // "http://" + param["domain"]
+  } else if (show == "logistics") { // "http://" + param["domain"]
 
     dp1.listTitle = "Logistics";
 
@@ -782,18 +881,20 @@ function loadMap1(dp) { // Also called by map-filters.js
 
     dp1.listLocation = false;
     dp1.addLink = "https://www.georgia.org/covid19response"; // Not yet used
-  } else if (param["show"] == "suppliers") { // "http://" + param["domain"]
+  } else if (show == "suppliers" || show == "ppe") { // "http://" + param["domain"]
+
     dp1.listTitle = "Georgia COVID-19 Response";
     dp1.listTitle = "Georgia Suppliers of&nbsp;Critical Items <span style='white-space:nowrap'>to Fight COVID-19</span>"; // For iFrame site
 
-    dp1.listInfo = "Select a category to the left to filter results. View&nbsp;<a href='https://www.georgia.org/sites/default/files/2020-08/ga_suppliers_list_8-19-2020.pdf ' target='_parent'>PDF&nbsp;version</a>&nbsp;of&nbsp;the&nbsp;complete&nbsp;list.";
-    dp1.dataset = "https://georgiadata.github.io/display/products/suppliers/us_ga_suppliers_ppe_2020_08_19.csv";
+    dp1.listInfo = "Select a category to the left to filter results. View&nbsp;<a href='https://www.georgia.org/sites/default/files/2020-12/ga_suppliers_list_12-2-2020.pdf' target='_parent'>PDF&nbsp;version</a>&nbsp;of&nbsp;the&nbsp;complete&nbsp;list.";
+    dp1.dataset = "https://map.georgia.org/display/products/suppliers/us_ga_suppliers_ppe_2020_12_02.csv";
     //dp1.dataset = "/display/products/suppliers/us_ga_suppliers_ppe_2020_06_17.csv";
 
     dp1.dataTitle = "Manufacturers and Distributors";
     dp1.itemsColumn = "items";
     dp1.valueColumn = "type";
     dp1.valueColumnLabel = "Type";
+    dp1.color = "#ff9819"; // orange
     dp1.markerType = "google";
     //dp1.keywords = "items";
     // "In Business Type": "type", "In State Name": "state", "In Postal Code" : "zip"
@@ -812,7 +913,7 @@ function loadMap1(dp) { // Also called by map-filters.js
     dp1.listLocation = false;
     dp1.addLink = "https://www.georgia.org/covid19response"; // Not yet used
 
-  } else if (param["show"] == "restaurants") {
+  } else if (show == "restaurants") {
     // Fulton County 5631 restaurants
     
     dp1 = {};
@@ -838,7 +939,7 @@ function loadMap1(dp) { // Also called by map-filters.js
     dp1.dataTitle = "Restaurant Scores";
     dp1.titleColumn = "restaurant";
     dp1.listInfo = "Fulton County";
-  } else if (param["show"] == "pickup") {
+  } else if (show == "pickup") {
     // Atlanta Pickup
     dp1.latitude = 33.76;
     dp1.longitude = -84.3880;
@@ -860,9 +961,18 @@ function loadMap1(dp) { // Also called by map-filters.js
     dp1.valueColumn = "Delivery";
     dp1.listLocation = true;
 
-  } else if (param["show"] == "farmfresh") { // || param["show"] == "" || param["show"] == "mockup"
-    dp1.listTitle = "USDA Farm Produce (mockup)";
-    dp1.dataset = dual_map.custom_data_root()  + "farmfresh/farmersmarkets-" + state_abbreviation + ".csv";
+  } else if (show == "farmfresh") {
+    dp1.listTitle = "USDA Farm Produce";
+    //if (location.host.indexOf('localhost') >= 0) {
+      dp1.valueColumn = "type";
+      dp1.valueColumnLabel = "Type"; // was: Prepared Food
+      //dp1.dataset = "../../../community/farmfresh/scraper/out/states/ga/markets.csv";
+      dp1.dataset = "https://model.earth/community-data/us/state/" + state_abbreviation.toUpperCase() + "/" + state_abbreviation.toLowerCase() + "-farmfresh.csv";
+    //} else {
+    //  // Older data
+    //  dp1.valueColumn = "Prepared";
+    //  dp1.dataset = dual_map.custom_data_root()  + "farmfresh/farmersmarkets-" + state_abbreviation + ".csv";
+    //}
     dp1.name = "Local Farms"; // To remove
     dp1.dataTitle = "Farm Fresh Produce";
     dp1.markerType = "google";
@@ -871,16 +981,13 @@ function loadMap1(dp) { // Also called by map-filters.js
     dp1.titleColumn = "marketname";
     dp1.searchFields = "marketname";
     dp1.addressColumn = "street";
-    dp1.valueColumn = "Prepared";
-    //dp1.valueColumn = "type";
-    dp1.valueColumnLabel = "Prepared Food";
     dp1.latColumn = "y";
     dp1.lonColumn = "x";
     dp1.stateColumn = "state";
 
     dp1.addlisting = "https://www.ams.usda.gov/services/local-regional/food-directories-update";
-
-    dp1.listInfo = "Green locations offer <span style='white-space: nowrap'>prepared food<br>Please call ahead to arrange pickup or delivery.</span><br>You can help keep this data current. <a style='white-space: nowrap' href='../farmfresh'>Learn about data</a>";
+    // community/farmfresh/ 
+    dp1.listInfo = "Farmers markets and local farms providing fresh produce directly to consumers. <a style='white-space: nowrap' href='https://model.earth/community/farmfresh/ga/'>About data</a> | <a href='https://www.ams.usda.gov/local-food-directories/farmersmarkets'>submit updates</a>";
   }
 
   // Load the map using settings above
@@ -902,6 +1009,7 @@ function loadMap1(dp) { // Also called by map-filters.js
       left: 0
     });
   }
+  showprevious = show;
 }
 
 
@@ -989,9 +1097,27 @@ function showList(dp,map) {
     $("#keywordFields").show();
     alert("Please check at least one column to search.")
   }
-  var data_out = []; // An array of objects
+  var data_sorted = []; // An array of objects
+  var data_out = [];
 
   $("#detaillist").text(""); // Clear prior results
+
+  if (1==2) {
+    // ADD DISTANCE
+    dp.data.forEach(function(element) {
+
+        if (element[dp.latColumn]) {
+          //output += "distance: " + calculateDistance(element[dp.latColumn], element[dp.lonColumn], dp.latitude, dp.longitude, "M");
+          element.distance = calculateDistance(element[dp.latColumn], element[dp.lonColumn], dp.latitude, dp.longitude, "M").toFixed(2);
+        }
+        data_sorted.push(element);
+    });
+    data_sorted.sort((a, b) => { // Sort by proximity
+        return a.distance - b.distance;
+    });
+
+    dp.data = data_sorted;
+  }
 
   dp.data.forEach(function(elementRaw) {
     count++;
@@ -1187,6 +1313,9 @@ function showList(dp,map) {
         name = element.title;
       }
 
+      if (element.website && !element.website.toLowerCase().includes("http")) {
+        element.website = "http://" + element.website;
+      }
       // TO INVESTIGATE - elementRaw (not element) has to be used here for color scale.
 
       // DETAILS LIST
@@ -1305,7 +1434,10 @@ function showList(dp,map) {
           output += "<b>Website:</b> <a href='" + element.website + "' target='_blank'>" + element.website.replace("https://","").replace("http://","").replace("www.","").replace(/\/$/, "") + "</a><br>"; 
         }
       }
-
+      if (element.distance) {
+          output += "<b>Distance:</b> " + element.distance + " miles<br>"; 
+        
+      }
       output += "</div>"; // End Lower
       output += "</div>"; // End detail
 
@@ -1439,6 +1571,7 @@ function popMapPoint(dp, map, latitude, longitude, name) {
     }
   }
 }
+
 // Scales: http://d3indepth.com/scales/
 function getScale(data, scaleType, valueCol) {
   var scale;
@@ -1564,18 +1697,18 @@ var topMenuHeight = 150;
 
 var mapFixed = false;
 var previousScrollTop = $(window).scrollTop();
-
 $(window).scroll(function() {
   if (revealHeader == false) {
-    $('.headerbar').hide(); $('#logoholderside').show();
+    $('.headerbar').hide(); $('#logoholderbar').show(); $('#logoholderside').show();
     $('.headerOffset').hide();
     if (!$("#filterFieldsHolder").is(':visible')) { // Retain search filters space at top, unless they are already hidden
       $('#headerFixed').hide();
     }
+    
     revealHeader = true; // For next manual scroll
   } else if ($(window).scrollTop() > previousScrollTop) { // Scrolling Up
     if ($(window).scrollTop() > previousScrollTop + 20) { // Scrolling Up fast
-      $('.headerbar').hide(); $('#logoholderside').show();
+      $('.headerbar').hide(); $('#logoholderbar').show(); $('#logoholderside').show();
       $('.headerOffset').hide();
       if (!$("#filterFieldsHolder").is(':visible')) { // Retain search filters space at top, unless they are already hidden
         $('#headerFixed').hide();
@@ -1583,11 +1716,11 @@ $(window).scroll(function() {
     }
   } else { // Scrolling Down
     if ($(window).scrollTop() < (previousScrollTop - 20)) { // Reveal if scrolling down fast
-      $('.headerbar').show(); $('#logoholderside').hide();
+      $('.headerbar').show(); $('#logoholderbar').hide(); $('#logoholderside').hide();
       $('.headerOffset').show();
       $('#headerFixed').show();
     } else if ($(window).scrollTop() == 0) { // At top
-      $('.headerbar').show(); $('#logoholderside').hide();
+      $('.headerbar').show(); $('#logoholderbar').hide(); $('#logoholderside').hide();
       $('.headerOffset').show();
         $('#headerFixed').show();
     }
@@ -1622,4 +1755,22 @@ function lockSidemap() {
     mapFixed = false;
   }
 }
-console.log('hello from dual map');
+function calculateDistance(lat1, lon1, lat2, lon2, unit) {
+  var radlat1 = Math.PI * lat1/180
+  var radlat2 = Math.PI * lat2/180
+  //var radlon1 = Math.PI * lon1/180
+  //var radlon2 = Math.PI * lon2/180
+  var theta = lon1-lon2
+  var radtheta = Math.PI * theta/180
+  var dist = Math.sin(radlat1) * Math.sin(radlat2) + Math.cos(radlat1) * Math.cos(radlat2) * Math.cos(radtheta);
+  dist = Math.acos(dist)
+  dist = dist * 180/Math.PI
+  dist = dist * 60 * 1.1515
+  if (unit=="K") { dist = dist * 1.609344 } // Kilometers
+  if (unit=="N") { dist = dist * 0.8684 } // Nautical miles
+  return dist
+}
+$(window).resize(function() {
+  $(".headerOffset2").height($("#filterFieldsHolder").height() + "px");
+});
+console.log('end of localsite/js/map.js');

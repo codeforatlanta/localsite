@@ -18,8 +18,12 @@ var dual_map = dual_map || (function(){
         },
         localsite_root : function() {
             let root = location.protocol + '//' + location.host + '/localsite/';
+            if (location.host.indexOf('georgia') >= 0) { // For feedback link within embedded map
+              root = 'https://map.georgia.org/localsite/';
+            }
             if (location.host.indexOf('localhost') < 0) {
-              root = "https://neighborhood.org/localsite/";
+              // May be needed if embedding without locathost repo in site root.
+              //root = "https://neighborhood.org/localsite/";
             }
             return (root);
         },
@@ -41,11 +45,6 @@ var dual_map = dual_map || (function(){
               root = "https://neighborhood.org/georgia-data/";
             }
             return (root);
-        },
-        absolute_root : function() {
-          // Curently only used for feedback form
-          let root = "https://map.georgia.org/community/"
-          return (root);
         }
     };
 }());
@@ -134,39 +133,17 @@ function updateHash(addToHash, addToExisting) {
     }
     hash = mix(addToHash,hash); // Gives priority to addToHash
 
-    // Reside in mix. DELETE
-        //for (var i in hash) { // Remove blank attributes
-        //  if (hash[i] === null || hash[i] === undefined || hash[i] === '') {
-        //    delete hash[i];
-        //  }
-        //}
-
     var hashString = decodeURIComponent($.param(hash)); // decode to display commas in URL
-
-        // findCompany
-
-    
     var pathname = window.location.pathname.replace(/\/\//g, '\/')
     var queryString = "";
     if (window.location.search) { // Existing, for parameters that are retained as hash changes.
       queryString += window.location.search; // Contains question mark (?)
     }
-
-    //var hsHash = '';
-    //hsHash = $('[name="hs"]:checked').map(function() {return this.value;}).get().join(',');
-    //if (hsHash) { // Remove the hash here if adding to other 
-    //  queryString += "#hs=" + hsHash;
-    //}
-    //$("#productCodes").val(hsHash);
-    //$("#productCodes").width("200px");
-
     if (hashString) { // Remove the hash here if adding to other 
       queryString += "#" + hashString;
     }
-    
     let searchTitle = 'Page ' + hashString;
     window.history.pushState("", searchTitle, pathname + queryString);
-    //refreshMain();
 }
 function goHash(addToHash) {
   console.log("goHash ")
@@ -220,15 +197,17 @@ function consoleLog(text,value) {
   $("#log_display").show();
   if (value) {
     $("#log_display textarea").append(text + " " + value + "\n");
+    console.log(text, value);
   } else {
     $("#log_display textarea").append(text + "\n");
+    console.log(text);
   }
 
   var dsconsole = $("#log_display textarea");
     if(dsconsole.length)
        dsconsole.scrollTop(dsconsole[0].scrollHeight - dsconsole.height() - 17); // Adjusts for bottom alignment
 
-  console.log(text, value);
+  
 }
 
 // Convert json to html
@@ -366,9 +345,9 @@ function formatRow(key,value,level,item) {
       //addHtml += formatRow(c,value[c],level);
       addHtml += "<div class='level" + level + "'>" + value + "&nbsp;</div>\n";
     }
-  } else if (key == "url") {
+  } else if (key == "url" || key == "hdurl") { // hdurl from NASA
       addHtml += "<a href='" + value + "'>" + value + "</a>"
-  } else if (key.indexOf("Uri")>=0) {
+  } else if (key.indexOf("Uri")>=0 && value) {
       uriLink = (value.indexOf("http")==0) ? value : "https://" + value; // Brittle
       addHtml += "<a href='" + uriLink + "'>" + value + "</a>"
   } else if (key == "logo") {
@@ -428,6 +407,7 @@ addEventListener("load", function(){
 });
 
 
+console.log("localsite.js called");
 var waitForJQuery = setInterval(function () {
     if (typeof $ != 'undefined') {
 
@@ -438,8 +418,19 @@ var waitForJQuery = setInterval(function () {
               $('.lazy').Lazy(); // Lazy load all divs with class .lazy
         });
 
-        clearInterval(waitForJQuery); // Escape the loop
+        if(location.host.indexOf('localhost') >= 0 || param["view"] == "local") {
+          var div = $("<div />", {
+              html: '<style>.local{display:inline-block !important}.localonly{display:block !important}</style>'
+            }).appendTo("body");
+          console.log("localsite.js waitForJQuery called");
+        } else {
+          // Inject style rule
+            var div = $("<div />", {
+              html: '<style>.local{display:none}.localonly{display:none}</style>'
+            }).appendTo("body");
+        }
       });
+      clearInterval(waitForJQuery); // Escape the loop
     }
 }, 10);
 
