@@ -1,14 +1,30 @@
 # County Industry Data Prep  
 
-[Data Processing Python Script](https://github.com/modelearth/community-data/blob/master/process/python/us_econ.ipynb) - edit locally using an [Anaconda Jupyter Notebook](https://jupyter.org/install)  
+The following documents how to generate a CSV file containing BLS data pulled from the EPAs Flowsa's [Data Commons](https://datacommons.org) API.  
 
-To do: check if 2017 has been added to master crosswalk  
+## BLS Data Preparation 
 
-[Resulting state data files](https://github.com/modelearth/community-data/tree/master/us/state)   
+U.S. Bureau of Labor Statistics (BLS) industry data  
+BLS data is pulled using the [FLOWSA Python script](https://github.com/USEPA/flowsa/blob/master/flowsa/BLS_QCEW.py)
+maintained by Catherine Birney.
+<!--Check if 2017 has been added to master crosswalk  -->
 
-[Options for Zipcode Level Data](../../../community/industries/)
+**Flowsa Wiki**  
+[Install & Run](https://github.com/USEPA/flowsa/wiki)  
+How Flowsa data is prepared - Creating a FlowByActivity Dataset
 
-Problem: Some industries lack payroll estimates at both the county and state level.  This occurs for approximately 80 of 388 industries in Georgia. For example, payroll for Georgia's 9 automotive manufacturers is not included in the U.S. Bureau of Economic Analysis (BEA) industry data. US census privacy protection rules omit company payroll when only 1 or 2 establishments reside in a county.   
+If you change BLS_QCEW.py, do so in our [FLOWSA fork](https://github.com/modelearth/flowsa).
 
-Possible Solution: Identify large employers, like automotive manufacturers, and add county-level estimates using national or regional averages.  
+Check for 6-digit 336111 automobile industry NAICS when outputting using FLOWSA.  
+Note that only 4-digit NAICS resides in "By-Industry" in [BLS downloadable files](https://www.bls.gov/cew/downloadable-data-files.htm).  
 
+
+Output to [state data files](https://github.com/modelearth/community-data/tree/master/us/state)    
+
+Output 5 columns with names: fips, naics, employees, wages and firms (establishment count)
+
+- fips - Location (fips for county)  
+- naics - ActivityProducedBy (6-digit naics)  
+- employees - Employment FlowAmount (Number of Employees)  
+- wages - Money (Annual Wages)
+- firms - Other (Number of Extablishments)  

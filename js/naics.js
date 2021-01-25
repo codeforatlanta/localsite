@@ -28,7 +28,7 @@ if (params.geo){
 [fips,dataObject.stateshown]=getStateFips(params)
 function getStateFips(params){
     if (params.geo) {
-        if (params.geo.includes(",")) {
+        //if (params.geo.includes(",")) {
             geos=params.geo.split(",")
             fips=[]
             for (var i = 0; i<geos.length; i++){
@@ -50,7 +50,9 @@ function getStateFips(params){
                 }
                 
             }
+        /* BUG - was loading Westion County from Wyoming when only one county selected.
         } else {
+            //alert("split on US")
             fip=params.geo.split("US")[1]
             
             if(fip.startsWith("0")){
@@ -70,6 +72,7 @@ function getStateFips(params){
             
             }
         }
+        */
     } else {
         fips = dataObject.stateshown;
     }
@@ -237,7 +240,11 @@ $(document).ready(function() {
         console.log("The hash: " + location.hash);
         let params = loadParams(location.search,location.hash);
         console.log("naics.js detects hash change hashChangeEvent");
-        renderIndustryChart(dataObject,values,params);
+        if(typeof value == 'undefined') {
+            console.log("ALERT value object undefined in naics.js")
+        } else {
+            renderIndustryChart(dataObject,values,params);
+        }
 
     }, false);
                         
@@ -498,6 +505,11 @@ function topRatesInFips(dataSet, dataNames, fips, params) {
     let gotext = "";
     if (params.go) {
         gotext = params.go.replace(/_/g," ").toTitleCase();
+        if (gotext == "Smart") {
+            gotext = "EV Ecosystem";
+        } else if (gotext == "Ppe") {
+            gotext = "Healthcare";
+        }
     }
 
     $("#econ_list").html("");
@@ -528,48 +540,11 @@ function topRatesInFips(dataSet, dataNames, fips, params) {
                     which_state=params.catsort+'_agg'
                     
                 }
-                // NAICS FROM community/projects/biotech
-                var bio_input = "113000,321113,113310,32121,32191,562213,322121,322110,"; // Omitted 541620
-                var bio_output = "325211,325991,3256,335991,325120,326190,";
-                var green_energy = "221117,221111,221113,221114,221115,221116,221118,";
-                var fossil_energy = "221112,324110,325110,";
-                var parts = "336111,336320,336330,336340,336360,336370,336390,333613,336412,336413,335910,335912,339110,333111,325211,325520,326112,326220,331221,332211,336370,336390,336350,336360,336310,326199,331110,333618,336211,336320";
-                var parts_carpets = "314110,313110,313210"
-                var ppe_suppliers = "622110,621111"
-                var farmfresh = "311612,311615,311911,311919,311830,311824,311941,311710,311611,115114,311613,311811,311942,311991,311999,311211,311224,311920"
 
-                var cat_filter = [];
-                if (params.naics) {
-                    cat_filter = params.naics;
-                }
-                else if (params.go){
-                    if (params.go == "bioeconomy") {
-                        cat_filter = (bio_input + bio_output + green_energy + fossil_energy).split(',');
-                    }
-                    else if (params.go == "farmfresh") {
-                        cat_filter = (farmfresh).split(',');
-                    }
-                    else if (params.go == "parts") {
-                        cat_filter = (parts).split(',');
-                    }
-                    else if (params.go == "ppe") {
-                        cat_filter = (ppe_suppliers).split(',');
-                    }
-                    if (cat_filter.length) {
-                        cat_filt=[]
-                        for(i=0;i<cat_filter.length;i++){
-                            
-                                cat_filt.push(cat_filter[i].slice(0,6))
-                            
-                        }
-                        cat_filter=cat_filt
-                        //console.log(cat_filter)
-                    }
-                }
-                if(params.go=="manufacturing"){
-                    cat_filter=["manufacturing placeholder"]
-                }
-                
+                // TO DO: Use hiddenhash.naics here instead
+                var cat_filter = getNaics_setHiddenHash(params.go);
+
+                //alert(cat_filter)
                 var rates_dict = {};
                 var rates_list = [];
                 var forlist={}
@@ -1063,7 +1038,7 @@ function topRatesInFips(dataSet, dataNames, fips, params) {
                             text += rightCol + "</div>";
                             
                             // use GoHash()
-                            let topMessage = "<p class='mapinfo'><b>Industry Comparison Tools</b> - List does not yet include industries without state-level payroll data. <a href='/localsite/info/data/'>Learn&nbsp;more&nbsp;and&nbsp;get&nbsp;involved</a></p>";
+                            let topMessage = "<p class='mapinfo'><b>Industry Comparison Tools</b> - List does not yet include data for industries without state-level payroll reporting by BEA. <a href='/localsite/info/data/'>Learn&nbsp;more&nbsp;and&nbsp;get&nbsp;involved</a></p>";
                             $("#topMessage").html(topMessage);
 
                             if(i<=20){
@@ -1091,7 +1066,10 @@ function topRatesInFips(dataSet, dataNames, fips, params) {
 
                         // Send to USEEIO Widget
                         //$('#industry-list').attr('data-naics', naicshash);
-                        applyIO(naicshash);
+                        
+                        if (!$.trim( $('#iogrid').html() ).length) { // If empty, otherwise triggered by hash change.
+                            applyIO(naicshash);
+                        }
                         updateMosic(naicshash);
 
                         //updateHash({"naics":naicshash});
@@ -1108,17 +1086,23 @@ function topRatesInFips(dataSet, dataNames, fips, params) {
                         $(".regiontitle").text("Parts Manufacturing");
                     } else if (params.go == "manufacturing") {
                         $(".regiontitle").text("Manufacturing");
+                    } else if (params.go == "ppe") {
+                        $(".regiontitle").text("Healthcare");
+                    } else if (params.go == "vehicles") {
+                        $(".regiontitle").text("Vehicle Manufacturing");
                     } else if (gotext) {
-                        $(".regiontitle").text(gotext);
+                        //$(".regiontitle").text(gotext);
                     }
-                    if(Array.isArray(fips) && statelength != fips.length){
-
+                    //alert("statelength " + statelength + " fips.length " + fips.length)
+                    //if(Array.isArray(fips) && statelength != fips.length) {
+                    if(Array.isArray(fips)) {
                         if (!params.regiontitle) {
                             //if (params.go && fips.length == 1) {
                             //    // Remove " County" from this .replace(" County","")
                             //    $(".regiontitle").text(d["county"] + " - " + gotext);
                             //} else 
                             if (params.go) {
+
                                 $(".regiontitle").text(gotext + " Industries within "+ fips.length + " counties");
                             } else {
                                 $(".regiontitle").text("Industries within "+ fips.length + " counties");
@@ -1152,7 +1136,7 @@ function topRatesInFips(dataSet, dataNames, fips, params) {
                             })
                         }
                         $(".location_titles").text($(".location_titles").text().replace(/,\s*$/, ""));
-                        if (fips.length >= 2 && fips.length <= 3) {
+                        if (fips.length >= 1 && fips.length <= 3) {
                             if (params.go) {
                                 $(".regiontitle").text($(".location_titles").text() + " - " + gotext);
                             } else {
@@ -1160,7 +1144,7 @@ function topRatesInFips(dataSet, dataNames, fips, params) {
                             }
                         }
 
-                    }else if(fips==dataObject.stateshown){
+                    } else if (fips==dataObject.stateshown) {
                         if (params.go == "bioeconomy") {
                             $(".regiontitle").text("Bioeconomy and Petroleum Industries");
                         } else if (params.go == "parts") {
@@ -1170,13 +1154,21 @@ function topRatesInFips(dataSet, dataNames, fips, params) {
                         } else if (params.go == "farmfresh") {
                             $(".regiontitle").text("Farm Fresh");
                         } else if (params.go == "ppe") {
-                            $(".regiontitle").text("PPE Suppliers");
+                            $(".regiontitle").text("Healthcare Industries");
+                        } else if (params.go == "smart") {
+                            $(".regiontitle").text("EV Ecosystem");
+                        } else if (params.go == "vehicles") {
+                            $(".regiontitle").text("Vehicles and Vehicle Parts");
                         } else if (gotext) {
                             $(".regiontitle").text(gotext);
                         } else {
-                            $(".regiontitle").text(String(d['Name'])+"'s Top Industries");
+                            // Temp, reactivate after iogrid stops deleteing hash values.
+                            $(".regiontitle").text("Industries");
+                            //$(".regiontitle").text(String(d['Name'])+"'s Top Industries");
                         }
-                    }else{
+                        //alert("filterSelected2")
+                        $(".filterSelected").text("State"); // Temp
+                    } else {
 
                         var filteredData = consdata.filter(function(d) {
                             if (params.go) {

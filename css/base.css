@@ -68,8 +68,7 @@ body {
   background-color: #fafafa;
   -webkit-font-smoothing: antialiased;
   font-family: 'Nunito Sans', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  color:#555;
-  color:#777;
+  color:#333;
   line-heightX:0; /* prevents gaps betweet images, but 0 caused text to overlap on start and nav icons. */
 }
 .flexbody {
@@ -512,7 +511,7 @@ content .js, pre code { /* Prevents .js from impacting js class within Drupal bo
   z-index:10; 
 }
 .main-content {
-  margin-top: 40px;
+  /* margin-top: 40px; */
   /* overflow:hidden; */  /* prevents footer from residing beside columns, but caused menu/accordion to be cut off. */
 }
 /*
